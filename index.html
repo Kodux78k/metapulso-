@@ -1,0 +1,328 @@
+<!DOCTYPE html><html lang="pt-BR"><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Infodose – Ativação Mini v2 (Upload/Análise → Markdown)</title>
+<style>
+:root{
+  --bg:#0a0f14; --bg2:#0e1620; --panel:#121b26; --ink:#eaf6ff; --muted:#9fb7cc;
+  --accA:#6ee7ff; --accB:#1b68ff; --rad:14px; --bd:1px solid rgba(110,231,255,.22);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:
+linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%, #071018 100%);
+color:var(--ink);font:500 16px var(--sans)}
+.header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg, rgba(14,22,32,.95), rgba(14,22,32,.6));
+backdrop-filter: blur(10px); border-bottom: var(--bd)}
+.header .inner{padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.h-title{font-weight:900;letter-spacing:.2px}
+.wrap{max-width:760px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.card{background:color-mix(in oklab,var(--panel) 92%, black);
+border:var(--bd);border-radius:var(--rad);padding:12px;box-shadow:0 10px 26px rgba(110,231,255,.06)}
+h2{margin:.1rem 0 .4rem;font-size:1.05rem}
+label{display:block;margin:10px 0 6px;font-weight:700}
+input,select,textarea{width:100%;border-radius:10px;border:1px solid rgba(110,231,255,.22);
+background:#0b141c;color:var(--ink);padding:10px}
+textarea{resize:vertical}
+.grid{display:grid;gap:10px;grid-template-columns:1fr}
+@media (min-width:760px){ .grid.two{grid-template-columns:1fr 1fr} .grid.three{grid-template-columns:1fr 1fr 1fr} }
+.btn{display:inline-flex;gap:8px;align-items:center;border:none;border-radius:999px;padding:10px 14px;
+background:linear-gradient(135deg,var(--accA),var(--accB));color:#001018;font-weight:900;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid rgba(110,231,255,.3)}
+.btn.small{padding:8px 12px;font-size:.92rem}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.sub{opacity:.8;font-size:.9rem}
+kbd{font:600 12px var(--mono);padding:2px 6px;border-radius:6px;background:#0b141c;border:1px solid rgba(110,231,255,.25)}
+pre{white-space:pre-wrap;background:#0b151a;border:1px dashed rgba(110,231,255,.35);padding:10px;border-radius:10px;font:500 14px var(--mono)}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid rgba(110,231,255,.35);color:var(--muted);font:600 12px var(--mono)}
+.ok{color:#79ffa6}.warn{color:#ffd479}.err{color:#ff8a8a}
+.toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:#0b151a;border:1px solid rgba(110,231,255,.35);
+padding:10px 14px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
+.toast.show{opacity:1}
+</style>
+<body>
+  <div class="header">
+    <div class="inner">
+      <div class="h-title">🔮 Infodose — Ativação Mini v2</div>
+      <div class="row">
+        <button id="btnHow" class="btn small ghost">Como usar</button>
+        <span class="badge">Upload/Cola → Análise → Auto-Preencher → Markdown</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- 1) Entrada de texto/markdown -->
+    <div class="card">
+      <h2>1) Texto/Markdown de Ativação</h2>
+      <div class="row">
+        <label class="btn" for="fileIn">Importar .md/.txt</label>
+        <input id="fileIn" type="file" accept=".md,.txt,text/plain" style="display:none">
+        <button id="btnPaste" class="btn ghost">Colar do clipboard</button>
+        <button id="btnSample" class="btn ghost">Demo</button>
+        <span class="sub">Dica: você pode colar o texto gerado pela Infodose aqui.</span>
+      </div>
+      <label>Conteúdo</label>
+      <textarea id="src" rows="10" placeholder="Cole aqui o texto/markdown gerado pela Infodose…"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnAnalyze" class="btn">Analisar & Sugerir Campos</button>
+        <button id="btnClear" class="btn ghost">Limpar</button>
+      </div>
+      <div id="diag" class="sub" style="margin-top:6px;opacity:.9"></div>
+    </div>
+
+    <!-- 2) Form de confirmação/edição -->
+    <div class="card">
+      <h2>2) Conferir / Editar</h2>
+      <div class="grid two">
+        <div><label>Nome</label><input id="nome" placeholder="Ex.: Maria"></div>
+        <div><label>Humor (1–10)</label><input id="humor" type="number" min="1" max="10" placeholder="7"></div>
+      </div>
+      <div class="grid two">
+        <div><label>Movimento</label>
+          <select id="mov"><option>Mais</option><option>Menos</option></select>
+        </div>
+        <div><label>Elemento</label>
+          <select id="elem">
+            <option>Água</option><option>Madeira</option><option>Fogo</option>
+            <option>Terra</option><option>Metal</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid two">
+        <div><label>Cor do dia</label><input id="cor" placeholder="Ex.: azul-claro"></div>
+        <div><label>Lembrete (HH:MM)</label><input id="hora" placeholder="20:00"></div>
+      </div>
+      <label>Intenção</label><input id="intencao" placeholder="Ex.: Cuidar do corpo com leveza">
+      <label>Ações (3 linhas, uma por ação)</label>
+      <textarea id="acoes" rows="3" placeholder="1) Beber 2 copos de água ao acordar&#10;2) Caminhar 10 min&#10;3) 9 min de respiração"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnMD" class="btn">Gerar Markdown</button>
+        <button id="btnCopy" class="btn ghost">Copiar Markdown</button>
+      </div>
+    </div>
+
+    <!-- 3) Markdown final -->
+    <div class="card">
+      <h2>3) Markdown Gerado</h2>
+      <pre id="md">(preencha ou analise um texto para gerar aqui)</pre>
+      <div class="sub">Cole isso no Notion/Docs/WhatsApp. <kbd>⌘/Ctrl+C</kbd> também funciona.</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">copiado</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const toast=(t="Copiado!")=>{const el=$("#toast");el.textContent=t;el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),1100)};
+
+// ========= DEMO =========
+const demoMD = `# 🔮 Painel de Ativação Infodose — Maria
+**Data:** 2025-10-30 · **Hora:** 08:22
+**Humor (1–10):** 7 · **Movimento:** Mais
+**Cor do dia:** azul-claro · **Elemento:** Água
+
+## Intenção
+> “Cuidar do corpo com leveza”
+
+## Ações de Hoje (3)
+- Beber 2 copos de água ao acordar
+- Caminhar 10 min
+- 9 min de respiração 4-4
+
+## Lembrete
+Checar às 20:00
+`;
+
+$("#btnSample").onclick=()=>{$("#src").value=demoMD; toast("Demo colada");};
+
+// ========= Upload/Paste =========
+$("#fileIn").addEventListener("change",(e)=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{$("#src").value=r.result||""; toast("Arquivo importado")}; r.readAsText(f);
+});
+$("#btnPaste").onclick=async()=>{
+  try{const t=await navigator.clipboard.readText(); if(t){$("#src").value=t; toast("Texto colado");}}catch{toast("Não conseguiu ler clipboard")}
+};
+$("#btnClear").onclick=()=>{$("#src").value=""; $("#diag").textContent="";};
+
+// ========= Heurística/Regex de Extração =========
+const ELEMENTS = ["Água","Madeira","Fogo","Terra","Metal"];
+const COLORS = ["azul","verde","amarelo","vermelho","roxo","violeta","lilás","laranja","rosa","preto","branco","cinza","dourado","prata","turquesa","ciano","magenta","marrom"];
+
+function first(re, s, group=1){
+  const m = re.exec(s); if(!m) return ""; return (m[group]||"").trim();
+}
+function findName(src){
+  let n = first(/Painel\s+de\s+Ativação[^\n]*—\s*([^\n\r]+)/i, src);
+  if(!n) n = first(/^\s*Nome[:\-]\s*([^\n\r]+)/im, src);
+  return n.split(/[\|·•\-–—]/)[0].trim();
+}
+function findHumor(src){
+  let h = first(/Humor\s*\(.*?\)\s*[:\-]\s*(\d{1,2})/i, src);
+  if(!h){ h = first(/\bHumor\b.*?(\d{1,2})/i, src); }
+  const v = parseInt(h||"",10); return (v>=1 && v<=10) ? String(v) : "";
+}
+function findMov(src){
+  const m = src.match(/Movimento\s*[:\-]\s*(Mais|Menos)/i);
+  if(m) return m[1][0].toUpperCase()+m[1].slice(1).toLowerCase();
+  // fallback: palavras-chave
+  if(/\bmais\s+movimento\b/i.test(src)) return "Mais";
+  if(/\bmenos\s+movimento\b/i.test(src)) return "Menos";
+  return "";
+}
+function findElem(src){
+  for(const e of ELEMENTS){ const re = new RegExp("\\b"+e+"\\b","i"); if(re.test(src)) return e; }
+  const m = first(/Elemento\s*[:\-]\s*([A-Za-zÀ-ÿ]+)/i, src);
+  return ELEMENTS.includes(cap(m)) ? cap(m) : "";
+}
+function cap(s){ if(!s) return ""; return s[0].toUpperCase()+s.slice(1).toLowerCase(); }
+function findCor(src){
+  let c = first(/Cor\s*(?:do\s*dia)?\s*[:\-]\s*([^\n\r]+)/i, src);
+  if(c) return c;
+  // procure cores conhecidas
+  const low = src.toLowerCase();
+  for(const k of COLORS){ if(low.includes(k)) return k; }
+  return "";
+}
+function findHora(src){
+  const hh = first(/\b([01]?\d|2[0-3]):([0-5]\d)\b/, src, 0);
+  if(hh) return hh;
+  const alt = first(/(?:às|as|[\s:])\s*([01]?\d|2[0-3])[h:]\s*([0-5]\d)?/i, src);
+  if(alt) return alt.padStart(5,"0").replace(/^(\d{1,2})$/, "$1:00");
+  return "";
+}
+function findIntencao(src){
+  let t = first(/Inten[cç][aã]o.*?\n+>?\s*["“](.+?)["”]/is, src);
+  if(!t) t = first(/Inten[cç][aã]o.*?\n+([^\n\r].+?)(?:\n\n|$)/is, src);
+  if(!t) t = first(/>\s*["“]([^"”]+)["”]/, src);
+  return t;
+}
+function findAcoes(src){
+  // linhas iniciadas por -, *, •, dígitos + ) + espaço
+  const lines = src.split(/\r?\n/).map(s=>s.trim());
+  const acc = [];
+  for(const L of lines){
+    if(/^(?:[-*•]|\d+\)|\d+\.)\s+/.test(L)){
+      acc.push(L.replace(/^(?:[-*•]|\d+\)|\d+\.)\s+/,'').trim());
+    }
+  }
+  // se “Ações” seção existe, prioriza próximas 3 linhas marcadas
+  const idx = lines.findIndex(l=>/A[cç][oõ]es/i.test(l));
+  if(idx>=0){
+    const tz = [];
+    for(let i=idx+1;i<Math.min(idx+10,lines.length);i++){
+      const L = lines[i].trim();
+      if(!L) continue;
+      if(/^(?:[-*•]|\d+\)|\d+\.)\s+/.test(L)) tz.push(L.replace(/^(?:[-*•]|\d+\)|\d+\.)\s+/,'').trim());
+      if(tz.length>=3) return tz.slice(0,3);
+    }
+  }
+  return acc.slice(0,3);
+}
+
+// ========= Auto-preencher =========
+function autopreencher(src){
+  const nome = findName(src);
+  const humor = findHumor(src);
+  const mov = findMov(src);
+  const elem = findElem(src);
+  const cor = findCor(src);
+  const hora = findHora(src);
+  const inten = findIntencao(src);
+  const acoes = findAcoes(src);
+
+  if(nome) $("#nome").value = nome;
+  if(humor) $("#humor").value = humor;
+  if(mov) $("#mov").value = mov;
+  if(elem) $("#elem").value = elem;
+  if(cor) $("#cor").value = cor;
+  if(hora) $("#hora").value = hora;
+  if(inten) $("#intencao").value = inten;
+  if(acoes.length){
+    $("#acoes").value = (acoes[0]||"")+"\n"+(acoes[1]||"")+"\n"+(acoes[2]||"");
+  }
+
+  // Diagnóstico
+  const ok = s=> s?`<span class="ok">ok</span>`:`<span class="warn">—</span>`;
+  $("#diag").innerHTML = `
+    Nome: ${ok(nome)} · Humor: ${ok(humor)} · Movimento: ${ok(mov)} · Elemento: ${ok(elem)} ·
+    Cor: ${ok(cor)} · Intenção: ${ok(inten)} · Ações: ${acoes.length?'<span class="ok">3</span>':'<span class="warn">0</span>'} · Lembrete: ${ok(hora)}
+  `;
+}
+
+$("#btnAnalyze").onclick=()=>{ const t=$("#src").value||""; if(!t.trim()) { toast("Cole ou importe um texto"); return; } autopreencher(t); };
+
+// ========= Markdown Final =========
+const MAP={
+  "Água":{prim:"Cuidador",sombra:"Sábio"},
+  "Madeira":{prim:"Criador",sombra:"Explorador"},
+  "Fogo":{prim:"Herói",sombra:"Rebelde"},
+  "Terra":{prim:"Governante",sombra:"Prestativo"},
+  "Metal":{prim:"Mago",sombra:"Inocente"}
+};
+function mdEsc(s){return (s||"").toString().trim()}
+function gerarMD(){
+  const now=new Date();
+  const nome=mdEsc($("#nome").value), humor=mdEsc($("#humor").value||"7");
+  const cor=mdEsc($("#cor").value), mov=$("#mov").value, elem=$("#elem").value;
+  const it=mdEsc($("#intencao").value), acoes=mdEsc($("#acoes").value), hora=mdEsc($("#hora").value||"20:00");
+  const arch=MAP[elem]||{prim:"Nova",sombra:"Elysha"};
+  const [a1="",a2="",a3=""]=acoes.split(/\n/).map(s=>s.replace(/^\d+\)\s*/,"").trim()).concat(["","",""]);
+  const md=`# 🔮 Painel de Ativação Infodose — ${nome||"Sem nome"}
+**Data:** ${now.toISOString().slice(0,10)} · **Hora:** ${now.toTimeString().slice(0,5)}
+**Humor (1–10):** ${humor} · **Movimento:** ${mov}
+**Cor do dia:** ${cor||"—"} · **Elemento:** ${elem}
+
+## Arquétipo do Dia
+**Primário:** ${arch.prim}  
+**Sombra de Suporte:** ${arch.sombra}
+
+> **Motivo:** Elemento ${elem} → ${arch.prim}/${arch.sombra}  
+> **Nota 3·6·9:** (3 foco, 6 expansão, 9 integração)
+
+## Intenção
+> “${it||"…"}”
+
+## Ações de Hoje (3)
+- ${a1||"Definir ação 1"}
+- ${a2||"Definir ação 2"}
+- ${a3||"Definir ação 3"}
+
+## Ritual 3·6·9
+**3 min:** respiração 4-4 · **6 min:** micro-movimento com a cor ${cor||"do dia"} · **9 min:** silêncio + frase âncora.
+
+## Som & Frequência
+- 432 Hz (calma) | 369 Hz (foco) — **9–18 min**
+
+## Afirmação
+> “Hoje eu honro o meu ${arch.prim} e avanço um passo.”
+
+## Lembrete
+**Checar às:** ${hora} → marcar ✅/↺
+
+---
+**Sempre único, sempre seu.**`;
+  $("#md").textContent=md;
+  return md;
+}
+
+$("#btnMD").onclick=()=>{ gerarMD(); toast("Markdown gerado"); };
+$("#btnCopy").onclick=async()=>{
+  const md = $("#md").textContent;
+  try{ await navigator.clipboard.writeText(md); toast("Markdown copiado"); }catch{ toast("Falhou ao copiar"); }
+};
+
+$("#btnHow").onclick=()=>alert(
+`Como usar:
+1) Cole ou importe um .md/.txt com o texto de ativação.
+2) Clique em “Analisar & Sugerir Campos”.
+3) Revise/edite os campos.
+4) Clique em “Gerar Markdown” e depois “Copiar Markdown”.
+
+Dica: Ele entende “Humor (1–10): X”, “Movimento: Mais/Menos”, “Elemento: …”, “Cor do dia: …”, “Intenção: …”, bullets das ações e horários “20:00”.`
+);
+</script>
+</body></html>
